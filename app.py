@@ -1,4 +1,5 @@
 from pawpal_system import Owner, Pet, Task, Scheduler
+from ai_assistant import PawPalAI
 import streamlit as st
 from datetime import datetime
 
@@ -8,11 +9,15 @@ st.title("🐾 PawPal+")
 # Session state
 if "owner" not in st.session_state:
     st.session_state.owner = Owner("Assem")
+if "ai" not in st.session_state:
+    st.session_state.ai = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 owner = st.session_state.owner
 
 # Tabs
-tab1, tab2 = st.tabs(["Pets & Tasks", "Schedule"])
+tab1, tab2, tab3 = st.tabs(["Pets & Tasks", "Schedule", "AI Assistant"])
 
 # Tab 1: Manage Pets & Tasks
 with tab1:
@@ -24,6 +29,7 @@ with tab1:
     if st.button("Add Pet"):
         if pet_name and pet_type:
             owner.add_pet(Pet(pet_name, pet_type, int(pet_age)))
+            st.session_state.ai = None
             st.success(f"{pet_name} added!")
         else:
             st.error("Please enter pet name and type.")
@@ -83,3 +89,40 @@ with tab2:
                 st.warning(f"⚠️ Conflict: '{t1.description}' and '{t2.description}' at the same time!")
         else:
             st.info("No tasks scheduled yet.")
+
+# Tab 3: AI Assistant
+with tab3:
+    st.header("AI Assistant")
+    st.caption(
+        "Chat naturally — schedule tasks, ask for pet care advice, check your plan, and more. "
+        "Powered by local AI (RAG) + pet care knowledge base."
+    )
+
+    if st.session_state.ai is None:
+        st.session_state.ai = PawPalAI(owner, Scheduler(owner))
+
+    ai = st.session_state.ai
+
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    user_input = st.chat_input("e.g. 'Schedule Buddy's walk at 9am' or 'How often should I groom my cat?'")
+
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                reply = ai.chat(user_input)
+            st.write(reply)
+
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+
+    if st.session_state.messages:
+        if st.button("Clear Chat"):
+            st.session_state.messages = []
+            ai.reset_conversation()
+            st.rerun()
