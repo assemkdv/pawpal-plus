@@ -1,7 +1,8 @@
-from asyncio import tasks
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
+
+VALID_FREQUENCIES = {"once", "daily", "weekly"}
 
 
 # Task
@@ -14,7 +15,15 @@ class Task:
     completed: bool = False
 
     def mark_complete(self):
-        """Mark the task as completed and return next occurrence if recurring."""
+        """Mark the task as completed and return next occurrence if recurring.
+
+        Calling this again on an already-completed task is a no-op that
+        returns None, so completing a task twice cannot create duplicate
+        future occurrences.
+        """
+        if self.completed:
+            return None
+
         self.completed = True
 
         # Handle recurring tasks
@@ -39,7 +48,7 @@ class Task:
         return f"{self.description} at {self.scheduled_time} ({status})"
 
 
-# Pet
+# Pet 
 @dataclass
 class Pet:
     name: str
@@ -66,6 +75,14 @@ class Owner:
         """Add a pet to the owner."""
         self.pets.append(pet)
 
+    def find_pet(self, name: str) -> Optional[Pet]:
+        """Return the pet matching name (case-insensitive), or None."""
+        name = name.strip().lower()
+        for pet in self.pets:
+            if pet.name.strip().lower() == name:
+                return pet
+        return None
+
     def get_all_tasks(self):
         """Return all tasks across all pets."""
         all_tasks = []
@@ -74,7 +91,7 @@ class Owner:
         return all_tasks
 
 
-# Scheduler
+# Scheduler 
 class Scheduler:
     def __init__(self, owner: Owner):
         self.owner = owner
@@ -104,18 +121,18 @@ class Scheduler:
         # sort by priority (higher first) and time
         tasks.sort(key=lambda t: (-t.priority, t.scheduled_time))
         return tasks
-
+    
     def sort_by_time(self, tasks):
         """Return tasks sorted by scheduled time."""
         return sorted(tasks, key=lambda task: task.scheduled_time)
-
+    
     def filter_by_status(self, completed=True):
         """Return tasks filtered by completion status."""
         return [
             task for task in self.get_all_tasks()
             if task.completed == completed
         ]
-
+    
     def filter_by_pet(self, pet_name):
         """Return tasks for a specific pet."""
         filtered_tasks = []
@@ -125,7 +142,7 @@ class Scheduler:
                 filtered_tasks.extend(pet.tasks)
 
         return filtered_tasks
-
+    
     def complete_task(self, task):
         """Mark task complete and handle recurrence."""
         new_task = task.mark_complete()
@@ -148,7 +165,7 @@ class Scheduler:
                 if tasks[i].scheduled_time == tasks[j].scheduled_time:
                     conflicts.append((tasks[i], tasks[j]))
 
-        return conflicts
+        return conflicts   
 
     def find_next_available_slot(self):
         """Find the next available time slot after scheduled tasks."""
@@ -167,4 +184,4 @@ class Scheduler:
             current_time = task.scheduled_time
 
         # if no gaps, return last task time + 1 hour
-        return current_time.replace(hour=current_time.hour + 1)
+        return current_time + timedelta(hours=1)

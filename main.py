@@ -1,9 +1,16 @@
-from datetime import datetime, timedelta
+"""CLI demo of the PawPal+ scheduling engine.
+
+Exercises pet/task creation, sorting, filtering, recurring-task completion,
+and conflict detection directly against pawpal_system.py, independent of the
+Streamlit app. Run with: python main.py
+"""
+
+from datetime import datetime
 from pawpal_system import Owner, Pet, Task, Scheduler
 
 
 # Create owner
-owner = Owner("Assem")
+owner = Owner("User")
 
 # Create pets
 dog = Pet("Buddy", "Dog", 3)
@@ -39,9 +46,6 @@ for task in tasks_today:
     status = "✅ Done" if task.completed else "⏳ Pending"
     print(f"- {task.description} at {time_str} | Priority: {task.priority} | {status}")
 
-# Create scheduler
-scheduler = Scheduler(owner)
-
 print("\nSorted Tasks")
 sorted_tasks = scheduler.sort_by_time(scheduler.get_all_tasks())
 for task in sorted_tasks:
@@ -52,7 +56,7 @@ pending_tasks = scheduler.filter_by_status(False)
 for task in pending_tasks:
     print(task.display_task())
 
-print("\n-Dog Tasks")
+print("\nDog Tasks")
 dog_tasks = scheduler.filter_by_pet("Buddy")
 for task in dog_tasks:
     print(task.display_task())
@@ -60,24 +64,19 @@ for task in dog_tasks:
 print("\nCompleting a Task")
 
 task_to_complete = owner.pets[0].tasks[0]
-new_task = task_to_complete.mark_complete()
-
-if new_task:
-    owner.pets[0].add_task(new_task)
+scheduler.complete_task(task_to_complete)
 
 print("\nUpdated Tasks")
 for task in owner.pets[0].tasks:
     print(task.display_task())
 
-from datetime import datetime
-
 same_time = datetime.now().replace(hour=10, minute=0)
 
-task1 = Task("Feed Dog", same_time, 2, "daily")
-task2 = Task("Vet Visit", same_time, 3, "daily")
+feed_task = Task("Feed Dog", same_time, 2, "daily")
+vet_task = Task("Vet Visit", same_time, 3, "daily")
 
-owner.pets[0].add_task(task1)
-owner.pets[0].add_task(task2)
+owner.pets[0].add_task(feed_task)
+owner.pets[0].add_task(vet_task)
 
 print("\nConflict Detection")
 
